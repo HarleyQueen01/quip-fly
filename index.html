@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Quip Fly</title>
+  <link rel="icon" href="data:,">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <main class="app-shell">
+    <aside class="control-panel" aria-live="polite">
+      <section class="panel-section intro-section">
+        <p class="eyebrow">Canopy Arcade</p>
+        <h1>Quip Fly</h1>
+        <p class="panel-copy">A wing-tap butterfly run with carved characters, garden gates, and ranked rounds.</p>
+      </section>
+
+      <section class="panel-section tournament-section">
+        <div class="panel-row">
+          <h2>Rankings</h2>
+          <span id="tournament-status" class="selected-character-name">Solo</span>
+        </div>
+        <div class="leaderboard-tabs" aria-label="Leaderboard type">
+          <button id="solo-board-tab" class="board-tab active" type="button">Solo Board</button>
+          <button id="tournament-board-tab" class="board-tab" type="button">Tournament Board</button>
+        </div>
+        <ol id="solo-leaderboard" class="leaderboard"></ol>
+        <ol id="tournament-leaderboard" class="leaderboard" hidden></ol>
+      </section>
+    </aside>
+
+    <section class="game-shell">
+      <canvas id="game" width="420" height="720" aria-label="Quip Fly game"></canvas>
+
+      <section class="hud" aria-live="polite">
+        <div class="score-strip">
+          <div>
+            <span id="score">0</span>
+            <small>Score</small>
+          </div>
+          <div>
+            <span id="best">0</span>
+            <small>Best</small>
+          </div>
+          <div class="round-card">
+            <span id="round">1</span>
+            <small>Round</small>
+          </div>
+        </div>
+        <div class="hud-actions">
+          <button id="pause" class="icon-button" type="button" aria-label="Pause">
+            <span class="pause-icon"></span>
+          </button>
+          <button id="mute" class="icon-button sound-button" type="button" aria-label="Mute sound">
+            <span class="sound-icon"></span>
+          </button>
+        </div>
+      </section>
+
+      <section id="overlay" class="overlay">
+        <div class="menu-panel">
+          <h2 id="title">Quip Fly</h2>
+          <p id="result" class="result">A bright butterfly arcade run</p>
+          <div id="setup-panel" class="setup-panel">
+            <div class="setup-row">
+              <label class="field-label" for="player-name">Player</label>
+              <input id="player-name" maxlength="16" value="Player 1" autocomplete="off">
+            </div>
+
+            <div class="setup-row">
+              <span class="field-label">Mode</span>
+              <div class="mode-row" role="group" aria-label="Game mode">
+                <button id="solo-mode" class="mode-button active" type="button">Solo</button>
+                <button id="tournament-mode" class="mode-button" type="button">Tournament</button>
+              </div>
+            </div>
+
+            <div class="setup-row">
+              <span class="field-label">Theme</span>
+              <div id="theme-grid" class="theme-grid" role="radiogroup" aria-label="Choose theme"></div>
+            </div>
+
+            <div class="setup-row">
+              <div class="panel-row">
+                <span class="field-label">Butterfly</span>
+                <span id="selected-character-name" class="selected-character-name">Lime Flash</span>
+              </div>
+              <div class="character-preview compact" aria-hidden="true">
+                <div id="selected-character-preview" class="butterfly-model lime preview-butterfly">
+                  <span class="wing upper left"></span>
+                  <span class="wing upper right"></span>
+                  <span class="wing lower left"></span>
+                  <span class="wing lower right"></span>
+                  <span class="body"></span>
+                  <span class="antenna left"></span>
+                  <span class="antenna right"></span>
+                </div>
+              </div>
+              <div id="character-grid" class="character-grid" role="radiogroup" aria-label="Choose butterfly"></div>
+            </div>
+          </div>
+          <div class="menu-actions">
+            <button id="start" type="button">Start</button>
+            <button id="next-round" type="button" hidden>Next Round</button>
+          </div>
+        </div>
+      </section>
+
+      <span class="author-credit">QUIP FLY TOURNAMENT</span>
+    </section>
+  </main>
+
+  <script src="game.js"></script>
+</body>
+</html>
