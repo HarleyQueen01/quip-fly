@@ -192,6 +192,7 @@ h2 {
   width: 76px;
   height: 64px;
   filter: drop-shadow(0 8px 10px rgba(16, 32, 51, 0.22));
+  transform: rotate(-90deg);
 }
 
 .butterfly-model.aqua {
@@ -368,6 +369,13 @@ h2 {
 .character-option .butterfly-model {
   scale: 0.55;
   margin: -8px 0 -10px;
+}
+
+.tournament-lock {
+  padding: 10px;
+  border: 1px solid rgba(16, 32, 51, 0.1);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.42);
 }
 
 .field-label {

@@ -14,6 +14,7 @@ const characterGrid = document.getElementById("character-grid");
 const selectedName = document.getElementById("selected-character-name");
 const selectedPreview = document.getElementById("selected-character-preview");
 const playerNameInput = document.getElementById("player-name");
+const tournamentPasswordInput = document.getElementById("tournament-password");
 const soloButton = document.getElementById("solo-mode");
 const tournamentButton = document.getElementById("tournament-mode");
 const tournamentStatus = document.getElementById("tournament-status");
@@ -49,6 +50,7 @@ const state = {
   best: Number(localStorage.getItem("quip-fly-best") || 0),
   muted: false,
   gameMode: "solo",
+  tournamentUnlocked: false,
   theme: themes[0],
   round: 1,
   tournamentScores: [],
@@ -57,8 +59,10 @@ const state = {
   speed: 2.5,
   bird: { x: 88, y: H * 0.45, vy: 0, size: 42, angle: 0 },
   pipes: [],
+  powerups: [],
   motes: [],
   trails: [],
+  shieldUntil: 0,
   soloLeaderboard: JSON.parse(localStorage.getItem("quip-fly-solo-leaderboard") || "[]"),
   tournamentLeaderboard: JSON.parse(localStorage.getItem("quip-fly-tournament-leaderboard") || "[]")
 };
@@ -124,6 +128,19 @@ function selectCharacter(id) {
 }
 
 function setGameMode(mode) {
+  if (mode === "tournament" && !unlockTournament()) {
+    state.gameMode = "solo";
+    soloButton.classList.add("active");
+    tournamentButton.classList.remove("active");
+    tournamentStatus.textContent = "Locked";
+    showLeaderboard("solo");
+    titleEl.textContent = "Tournament Locked";
+    resultEl.textContent = "Enter a username and the password to unlock tournament mode.";
+    setupPanel.hidden = false;
+    overlay.hidden = false;
+    return;
+  }
+
   state.gameMode = mode;
   soloButton.classList.toggle("active", mode === "solo");
   tournamentButton.classList.toggle("active", mode === "tournament");
@@ -142,6 +159,13 @@ function setGameMode(mode) {
     setupPanel.hidden = false;
     overlay.hidden = false;
   }
+}
+
+function unlockTournament() {
+  const name = (playerNameInput.value || "").trim();
+  const password = (tournamentPasswordInput.value || "").trim();
+  state.tournamentUnlocked = Boolean(name) && password === "quipnetwork";
+  return state.tournamentUnlocked;
 }
 
 function renderLeaderboard() {
@@ -183,8 +207,10 @@ function resetGame() {
   state.bird.vy = -4.2;
   state.bird.angle = 0;
   state.pipes = [];
+  state.powerups = [];
   state.motes = [];
   state.trails = [];
+  state.shieldUntil = 0;
   scoreEl.textContent = "0";
   roundEl.textContent = state.gameMode === "tournament" ? state.round : 1;
   tournamentStatus.textContent = state.gameMode === "tournament" ? `Round ${state.round}/${ROUND_LIMIT}` : "Solo";
@@ -196,6 +222,10 @@ function resetGame() {
 }
 
 function startTournament() {
+  if (!unlockTournament()) {
+    setGameMode("tournament");
+    return;
+  }
   state.gameMode = "tournament";
   state.round = 1;
   state.tournamentScores = [];
@@ -213,6 +243,16 @@ function spawnGate() {
     width: 70,
     scored: false,
     phase: Math.random() * Math.PI * 2
+  });
+}
+
+function spawnPowerup() {
+  state.powerups.push({
+    x: W + 36,
+    y: 86 + Math.random() * (H - 190),
+    r: 13,
+    a: 0,
+    eaten: false
   });
 }
 
@@ -316,6 +356,7 @@ function update() {
   state.bird.angle = 0;
 
   if (state.frame % 102 === 0) spawnGate();
+  if (state.frame > 120 && state.frame % 330 === 0) spawnPowerup();
   if (state.frame % 13 === 0) {
     state.motes.push({
       x: W + 12,
@@ -350,6 +391,18 @@ function update() {
   });
   state.pipes = state.pipes.filter((pipe) => pipe.x + pipe.width > -20);
 
+  state.powerups.forEach((powerup) => {
+    powerup.x -= state.speed;
+    powerup.a += 0.08;
+    if (!powerup.eaten && distance(state.bird.x, state.bird.y, powerup.x, powerup.y) < state.bird.size * 0.45 + powerup.r) {
+      powerup.eaten = true;
+      state.shieldUntil = state.frame + 300;
+      state.trails.push({ x: state.bird.x, y: state.bird.y, r: 18, a: 0.7, shield: true });
+      beep(880, 0.08);
+    }
+  });
+  state.powerups = state.powerups.filter((powerup) => powerup.x > -30 && !powerup.eaten);
+
   if (collides()) endGame();
 }
 
@@ -358,13 +411,33 @@ function collides() {
   const bx = state.bird.x;
   const by = state.bird.y;
 
-  if (by - r < 0 || by + r > H - 36) return true;
+  if (by - r < 0 || by + r > H - 36) return shieldBlocks();
 
-  return state.pipes.some((pipe) => {
+  const hitPipe = state.pipes.find((pipe) => {
     const insideX = bx + r > pipe.x + 8 && bx - r < pipe.x + pipe.width - 8;
     const outsideGap = by - r < pipe.top || by + r > pipe.bottom;
     return insideX && outsideGap;
   });
+  if (!hitPipe) return false;
+  if (shieldBlocks()) {
+    hitPipe.x = -hitPipe.width - 1;
+    return false;
+  }
+  return true;
+}
+
+function shieldBlocks() {
+  if (state.frame <= state.shieldUntil) {
+    state.shieldUntil = 0;
+    state.trails.push({ x: state.bird.x, y: state.bird.y, r: 26, a: 0.85, shield: true });
+    beep(260, 0.08);
+    return false;
+  }
+  return true;
+}
+
+function distance(x1, y1, x2, y2) {
+  return Math.hypot(x1 - x2, y1 - y2);
 }
 
 function drawBackground() {
@@ -414,6 +487,31 @@ function drawMist(x, y, s) {
 function drawGate(pipe) {
   drawGardenGate(pipe.x, 0, pipe.width, pipe.top, true, pipe.phase);
   drawGardenGate(pipe.x, pipe.bottom, pipe.width, H - pipe.bottom - 36, false, pipe.phase);
+}
+
+function drawPowerups() {
+  state.powerups.forEach((powerup) => {
+    const pulse = Math.sin(state.frame * 0.12 + powerup.a) * 0.18 + 1;
+    ctx.save();
+    ctx.translate(powerup.x, powerup.y);
+    ctx.scale(pulse, pulse);
+    ctx.fillStyle = "rgba(255, 255, 255, 0.36)";
+    ctx.beginPath();
+    ctx.arc(0, 0, powerup.r + 8, 0, Math.PI * 2);
+    ctx.fill();
+    const grad = ctx.createRadialGradient(-4, -4, 2, 0, 0, powerup.r);
+    grad.addColorStop(0, "#ffffff");
+    grad.addColorStop(0.38, "#ffe66d");
+    grad.addColorStop(1, "#36d6ad");
+    ctx.fillStyle = grad;
+    ctx.beginPath();
+    ctx.arc(0, 0, powerup.r, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.strokeStyle = "rgba(16, 32, 51, 0.5)";
+    ctx.lineWidth = 2;
+    ctx.stroke();
+    ctx.restore();
+  });
 }
 
 function drawGardenGate(x, y, w, h, flip, phase) {
@@ -473,8 +571,8 @@ function drawBird() {
   const flap = Math.sin(state.frame * 0.48) * 0.55;
   state.trails.forEach((trail) => {
     ctx.globalAlpha = trail.a;
-    ctx.strokeStyle = state.selected.swatch;
-    ctx.lineWidth = 2;
+    ctx.strokeStyle = trail.shield ? "rgba(255,255,255,0.9)" : state.selected.swatch;
+    ctx.lineWidth = trail.shield ? 4 : 2;
     ctx.beginPath();
     ctx.arc(trail.x, trail.y, trail.r, 0, Math.PI * 2);
     ctx.stroke();
@@ -483,12 +581,31 @@ function drawBird() {
 
   ctx.save();
   ctx.translate(x, y);
-  ctx.rotate(0);
+  ctx.rotate(-Math.PI / 2);
   ctx.shadowColor = "rgba(6, 54, 69, 0.25)";
   ctx.shadowBlur = 12;
   ctx.shadowOffsetY = 9;
   drawCarvedButterfly(size, flap, state.selected);
   ctx.restore();
+
+  if (state.frame <= state.shieldUntil) {
+    const pulse = 1 + Math.sin(state.frame * 0.18) * 0.04;
+    ctx.save();
+    ctx.translate(x, y);
+    ctx.scale(pulse, pulse);
+    ctx.strokeStyle = "rgba(255,255,255,0.88)";
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.arc(0, 0, size * 0.78, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.strokeStyle = state.selected.swatch;
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.arc(0, 0, size * 0.95, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.restore();
+    return;
+  }
 }
 
 function cssVar(name, fallback) {
@@ -592,6 +709,7 @@ function drawCarvedButterfly(size, flap, character) {
 function render() {
   drawBackground();
   state.pipes.forEach(drawGate);
+  drawPowerups();
   drawGround();
   drawBird();
 }
