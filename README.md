@@ -1,6 +1,6 @@
 # Quip Fly
 
-Quip Fly is a mobile-friendly canvas arcade game inspired by the provided flappy reference, rebuilt with a horizontal carved butterfly that stays level while its wings flap, multiple color variants based on the supplied image, selectable visual themes, separate solo and tournament leaderboards, shield pickups, and a locked three-round tournament mode.
+Quip Fly is a mobile-friendly canvas arcade game inspired by the provided flappy reference, rebuilt with a horizontal carved butterfly that stays level while its wings flap, multiple color variants based on the supplied image, selectable visual themes, separate solo and tournament leaderboards, shield nectar placed inside gate openings, and a locked three-round tournament mode.
 
 ## Run Locally
 

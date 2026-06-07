@@ -60,6 +60,7 @@ const state = {
   bird: { x: 88, y: H * 0.45, vy: 0, size: 42, angle: 0 },
   pipes: [],
   powerups: [],
+  gateCount: 0,
   motes: [],
   trails: [],
   shieldUntil: 0,
@@ -208,6 +209,7 @@ function resetGame() {
   state.bird.angle = 0;
   state.pipes = [];
   state.powerups = [];
+  state.gateCount = 0;
   state.motes = [];
   state.trails = [];
   state.shieldUntil = 0;
@@ -236,20 +238,26 @@ function startTournament() {
 function spawnGate() {
   const gap = Math.max(146, 190 - state.score * 2.2);
   const top = 96 + Math.random() * (H - 290 - gap);
-  state.pipes.push({
+  const pipe = {
     x: W + 28,
     top,
     bottom: top + gap,
     width: 70,
     scored: false,
     phase: Math.random() * Math.PI * 2
-  });
+  };
+  state.pipes.push(pipe);
+  state.gateCount += 1;
+  if (state.gateCount > 1 && state.gateCount % 3 === 0) spawnPowerup(pipe);
 }
 
-function spawnPowerup() {
+function spawnPowerup(pipe) {
+  const safePadding = 34;
+  const minY = pipe.top + safePadding;
+  const maxY = pipe.bottom - safePadding;
   state.powerups.push({
-    x: W + 36,
-    y: 86 + Math.random() * (H - 190),
+    x: pipe.x + pipe.width * 0.5,
+    y: minY + Math.random() * Math.max(1, maxY - minY),
     r: 13,
     a: 0,
     eaten: false
@@ -356,7 +364,6 @@ function update() {
   state.bird.angle = 0;
 
   if (state.frame % 102 === 0) spawnGate();
-  if (state.frame > 120 && state.frame % 330 === 0) spawnPowerup();
   if (state.frame % 13 === 0) {
     state.motes.push({
       x: W + 12,
@@ -419,7 +426,7 @@ function collides() {
     return insideX && outsideGap;
   });
   if (!hitPipe) return false;
-  if (shieldBlocks()) {
+  if (!shieldBlocks()) {
     hitPipe.x = -hitPipe.width - 1;
     return false;
   }
