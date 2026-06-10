@@ -467,6 +467,8 @@ h2 {
   margin-top: 12px;
   display: grid;
   gap: 7px;
+  max-height: 330px;
+  overflow: auto;
   padding: 0;
   list-style-position: inside;
 }
@@ -493,6 +495,18 @@ h2 {
   border-color: transparent;
   background: var(--button);
   color: white;
+}
+
+.reset-board {
+  width: 100%;
+  min-height: 36px;
+  margin-top: 8px;
+  border: 1px solid color-mix(in srgb, var(--accent-2), transparent 48%);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.58);
+  color: var(--accent-2);
+  font-size: 12px;
+  font-weight: 900;
 }
 
 .leaderboard li {

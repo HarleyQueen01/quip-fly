@@ -22,6 +22,7 @@ const setupPanel = document.getElementById("setup-panel");
 const themeGrid = document.getElementById("theme-grid");
 const soloBoardTab = document.getElementById("solo-board-tab");
 const tournamentBoardTab = document.getElementById("tournament-board-tab");
+const resetTournamentBoardButton = document.getElementById("reset-tournament-board");
 const soloLeaderboardEl = document.getElementById("solo-leaderboard");
 const tournamentLeaderboardEl = document.getElementById("tournament-leaderboard");
 
@@ -65,7 +66,7 @@ const state = {
   trails: [],
   shieldUntil: 0,
   soloLeaderboard: JSON.parse(localStorage.getItem("quip-fly-solo-leaderboard") || "[]"),
-  tournamentLeaderboard: JSON.parse(localStorage.getItem("quip-fly-tournament-leaderboard") || "[]")
+  tournamentLeaderboard: []
 };
 
 bestEl.textContent = state.best;
@@ -73,6 +74,8 @@ renderCharacterGrid();
 renderThemeGrid();
 renderLeaderboard();
 applyTheme("canopy");
+fetchTournamentLeaderboard();
+setInterval(fetchTournamentLeaderboard, 8000);
 
 function renderCharacterGrid() {
   characterGrid.innerHTML = "";
@@ -170,13 +173,13 @@ function unlockTournament() {
 }
 
 function renderLeaderboard() {
-  soloLeaderboardEl.innerHTML = boardMarkup(state.soloLeaderboard);
-  tournamentLeaderboardEl.innerHTML = boardMarkup(state.tournamentLeaderboard);
+  soloLeaderboardEl.innerHTML = boardMarkup(state.soloLeaderboard, 10);
+  tournamentLeaderboardEl.innerHTML = boardMarkup(state.tournamentLeaderboard, 500);
 }
 
-function boardMarkup(rows) {
+function boardMarkup(rows, limit) {
   return rows.length
-    ? rows.slice(0, 5).map((row) => `<li><span>${row.name}</span><span>${row.score}</span></li>`).join("")
+    ? rows.slice(0, limit).map((row, index) => `<li><span>${index + 1}. ${row.name}</span><span>${row.score}</span></li>`).join("")
     : `<li><span>No scores yet</span><span>0</span></li>`;
 }
 
@@ -186,10 +189,16 @@ function showLeaderboard(type) {
   tournamentBoardTab.classList.toggle("active", isTournament);
   soloLeaderboardEl.hidden = isTournament;
   tournamentLeaderboardEl.hidden = !isTournament;
+  if (isTournament) fetchTournamentLeaderboard();
 }
 
 function saveScore(score, type = state.gameMode) {
   const name = (playerNameInput.value || "Player").trim().slice(0, 16) || "Player";
+  if (type === "tournament") {
+    submitTournamentScore(name, score);
+    return;
+  }
+
   const key = type === "tournament" ? "tournamentLeaderboard" : "soloLeaderboard";
   const storageKey = type === "tournament" ? "quip-fly-tournament-leaderboard" : "quip-fly-solo-leaderboard";
   state[key].push({ name, score, date: new Date().toISOString() });
@@ -197,6 +206,68 @@ function saveScore(score, type = state.gameMode) {
   state[key] = state[key].slice(0, 10);
   localStorage.setItem(storageKey, JSON.stringify(state[key]));
   renderLeaderboard();
+}
+
+async function fetchTournamentLeaderboard() {
+  try {
+    const response = await fetch("/api/tournament/leaderboard", { cache: "no-store" });
+    if (!response.ok) throw new Error("Could not load tournament board.");
+    const data = await response.json();
+    state.tournamentLeaderboard = Array.isArray(data.scores) ? data.scores : [];
+    renderLeaderboard();
+  } catch {
+    tournamentLeaderboardEl.innerHTML = `<li><span>Board offline</span><span>--</span></li>`;
+  }
+}
+
+async function submitTournamentScore(name, score) {
+  try {
+    const response = await fetch("/api/tournament/leaderboard", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        name,
+        score,
+        password: (tournamentPasswordInput.value || "").trim()
+      })
+    });
+    const data = await response.json();
+    if (!response.ok) throw new Error(data.error || "Could not save tournament score.");
+    state.tournamentLeaderboard = Array.isArray(data.scores) ? data.scores : [];
+    showLeaderboard("tournament");
+    renderLeaderboard();
+  } catch (error) {
+    titleEl.textContent = "Score Not Saved";
+    resultEl.textContent = error.message;
+  }
+}
+
+async function resetTournamentLeaderboard() {
+  if ((tournamentPasswordInput.value || "").trim() !== "quipnetwork") {
+    titleEl.textContent = "Reset Locked";
+    resultEl.textContent = "Enter the tournament password to reset the board.";
+    setupPanel.hidden = false;
+    overlay.hidden = false;
+    return;
+  }
+
+  try {
+    const response = await fetch("/api/tournament/leaderboard", {
+      method: "DELETE",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ password: (tournamentPasswordInput.value || "").trim() })
+    });
+    const data = await response.json();
+    if (!response.ok) throw new Error(data.error || "Could not reset tournament board.");
+    state.tournamentLeaderboard = Array.isArray(data.scores) ? data.scores : [];
+    showLeaderboard("tournament");
+    renderLeaderboard();
+  } catch (error) {
+    titleEl.textContent = "Reset Failed";
+    resultEl.textContent = error.message;
+    setupPanel.hidden = false;
+    overlay.hidden = false;
+  }
 }
 
 function resetGame() {
@@ -751,6 +822,7 @@ soloButton.addEventListener("click", () => setGameMode("solo"));
 tournamentButton.addEventListener("click", () => setGameMode("tournament"));
 soloBoardTab.addEventListener("click", () => showLeaderboard("solo"));
 tournamentBoardTab.addEventListener("click", () => showLeaderboard("tournament"));
+resetTournamentBoardButton.addEventListener("click", resetTournamentLeaderboard);
 
 window.addEventListener("keydown", (event) => {
   if (event.code === "Space" || event.code === "ArrowUp") {
